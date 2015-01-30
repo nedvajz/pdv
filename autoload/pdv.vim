@@ -58,6 +58,7 @@ let s:regex["attribute"] = '^\(\s*\)\(\(private\s*\|public\s*\|protected\s*\|sta
 
 " [:spacce:]*(abstract|final|)[:space:]*(class|interface)+[:space:]+\(extends ([:identifier:])\)?[:space:]*\(implements ([:identifier:][, ]*)+\)?
 let s:regex["class"] = '^\(\s*\)\(\S*\)\s*\(interface\|class\)\s*\(\S\+\)\s*\([^{]*\){\?$'
+let s:regex["file"] = '^<?php$'
 
 let s:regex["types"] = {}
 
@@ -79,6 +80,9 @@ let s:mapping = [
     \ {"regex": s:regex["class"],
     \  "function": function("pdv#ParseClassData"),
     \  "template": "class"},
+    \ {"regex": s:regex["file"],
+    \  "function": function("pdv#ParseFileData"),
+    \  "template": "file"},
 \ ]
 
 func! pdv#DocumentCurrentLine()
@@ -103,14 +107,20 @@ func! pdv#DocumentWithSnip()
 	let l:parseconfig = s:DetermineParseConfig(getline(l:docline))
 	let l:data = s:ParseDocData(l:docline, l:parseconfig)
 	let l:docblock = s:GenerateDocumentation(l:parseconfig, l:data)
-    let l:snippet = join(s:ApplyIndent(l:docblock, l:data["indent"]), "\n")
+	let l:snippet = join(s:ApplyIndent(l:docblock, l:data["indent"]), "\n")
 
 	let l:indent = l:data["indent"]
 
-	call append(l:docline - 1, [""])
-	call cursor(l:docline, 0)
+	if "file" == l:parseconfig["template"]
+		call append(l:docline, [""])
+		call append(l:docline + 1, [""])
+		call cursor(l:docline + 2, 0)
+	else
+		call append(l:docline - 1, [""])
+		call cursor(l:docline, 0)
+	endif
 
-    call UltiSnips#Anon(l:snippet)
+	call UltiSnips#Anon(l:snippet)
 endfunc
 
 func! s:DetermineParseConfig(line)
@@ -161,6 +171,19 @@ func! pdv#ParseClassData(line)
 		call s:ParseExtendsImplements(l:data, l:matches[5])
 	endif
 	" TODO: abstract? final?
+
+	return l:data
+endfunc
+
+func! pdv#ParseFileData(line)
+	let l:text = getline(a:line)
+
+	let l:data = {}
+	let l:matches = matchlist(l:text, s:regex["file"])
+
+	let l:data["indent"] = ""
+	let l:data["author"] = g:pdv_author
+	let l:data["copyright"] = g:pdv_copyright
 
 	return l:data
 endfunc
