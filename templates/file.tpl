@@ -1,0 +1,4 @@
+/**
+ * @author    {{author}}
+ * @copyright {{copyright}}
+ */
